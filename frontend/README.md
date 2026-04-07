@@ -1,36 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Frontend (Next.js)
 
-## Getting Started
+UI for DisasterGuard disaster assessment workflows:
 
-First, run the development server:
+- upload pre/post satellite imagery
+- run backend damage inference
+- visualize results on map + hotspot view
+- inspect analytics and generated reports
+
+## Development
 
 ```bash
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Backend integration
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+`next.config.ts` rewrites API calls to backend:
 
-## Learn More
+- `/api/health` -> `http://localhost:8000/health`
+- `/api/*` -> `http://localhost:8000/api/*`
 
-To learn more about Next.js, take a look at the following resources:
+So backend should run on port `8000`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Quality checks
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run lint --silent
+npm run build
+```
 
-## Deploy on Vercel
+## Main app surfaces
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `src/app/upload/page.tsx` — imagery upload + inference trigger
+- `src/app/analysis/page.tsx` — result details + map
+- `src/app/hotspots/page.tsx` — hotspot heatmap
+- `src/app/analytics/page.tsx` — aggregate charts
+- `src/app/reports/page.tsx` — report list/details
+- `src/context/AssessmentContext.tsx` — assessment state + persistence
