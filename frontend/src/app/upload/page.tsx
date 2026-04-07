@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Dropzone } from "@/components/upload/Dropzone";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -216,8 +217,15 @@ export default function UploadPage() {
                             {unpaired.map((file, idx) => (
                                 <div key={idx} className="flex items-center justify-between p-3 bg-white/[0.03] rounded-lg border border-white/[0.06] group hover:border-cyan-500/20 transition-colors">
                                     <div className="flex items-center gap-4">
-                                        <div className="h-10 w-10 bg-white/[0.05] rounded-lg overflow-hidden shrink-0 border border-white/[0.06]">
-                                            <img src={file.preview} alt={file.name} className="h-full w-full object-cover" />
+                                        <div className="relative h-10 w-10 bg-white/[0.05] rounded-lg overflow-hidden shrink-0 border border-white/[0.06]">
+                                            <Image
+                                                src={file.preview}
+                                                alt={file.name}
+                                                fill
+                                                unoptimized
+                                                sizes="40px"
+                                                className="object-cover"
+                                            />
                                         </div>
                                         <div>
                                             <p className="text-sm font-medium text-slate-200 truncate max-w-[300px]">{file.name}</p>

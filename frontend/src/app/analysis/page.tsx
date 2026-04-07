@@ -7,6 +7,7 @@ import { Download, MapPin, Calendar, AlertTriangle, Navigation, ImageIcon, Satel
 import { useAssessment } from "@/context/AssessmentContext";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function AnalysisPage() {
     const { currentAssessment } = useAssessment();
@@ -98,9 +99,16 @@ export default function AnalysisPage() {
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
                                     <p className="text-xs font-semibold text-slate-500 uppercase">Pre-Event Reference</p>
-                                    <div className="w-full h-32 bg-white/[0.03] rounded-lg overflow-hidden border border-white/[0.06]">
+                                    <div className="relative w-full h-32 bg-white/[0.03] rounded-lg overflow-hidden border border-white/[0.06]">
                                         {currentAssessment.imagePair?.pre ? (
-                                            <img src={currentAssessment.imagePair.pre} className="w-full h-full object-cover" alt="Pre-event" />
+                                            <Image
+                                                src={currentAssessment.imagePair.pre}
+                                                alt="Pre-event"
+                                                fill
+                                                unoptimized
+                                                sizes="(max-width: 1024px) 100vw, 400px"
+                                                className="object-cover"
+                                            />
                                         ) : (
                                             <div className="flex flex-col items-center justify-center h-full text-slate-500">
                                                 <ImageIcon className="w-6 h-6 mb-1" />
@@ -111,9 +119,16 @@ export default function AnalysisPage() {
                                 </div>
                                 <div className="space-y-2">
                                     <p className="text-xs font-semibold text-slate-500 uppercase">Post-Event Capture</p>
-                                    <div className="w-full h-32 bg-white/[0.03] rounded-lg overflow-hidden border border-white/[0.06]">
+                                    <div className="relative w-full h-32 bg-white/[0.03] rounded-lg overflow-hidden border border-white/[0.06]">
                                         {currentAssessment.imagePair?.post ? (
-                                            <img src={currentAssessment.imagePair.post} className="w-full h-full object-cover" alt="Post-event" />
+                                            <Image
+                                                src={currentAssessment.imagePair.post}
+                                                alt="Post-event"
+                                                fill
+                                                unoptimized
+                                                sizes="(max-width: 1024px) 100vw, 400px"
+                                                className="object-cover"
+                                            />
                                         ) : (
                                             <div className="flex flex-col items-center justify-center h-full text-slate-500">
                                                 <ImageIcon className="w-6 h-6 mb-1" />
