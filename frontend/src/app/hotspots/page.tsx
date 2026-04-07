@@ -59,6 +59,9 @@ const heatmapLayer: Omit<HeatmapLayerSpecification, "source"> = {
     }
 };
 
+const ASSUMED_SCENE_WIDTH_METERS = 300;
+const ASSUMED_SCENE_HEIGHT_METERS = 300;
+
 export default function HotspotsPage() {
     const { assessments } = useAssessment();
     const [selectedAssessmentId, setSelectedAssessmentId] = useState<string>(
@@ -74,6 +77,11 @@ export default function HotspotsPage() {
         const results = selectedAssessment.results;
         const baseLng = selectedAssessment.location.lng;
         const baseLat = selectedAssessment.location.lat;
+        const sourceWidth = results.source_dimensions?.width ?? 1024;
+        const sourceHeight = results.source_dimensions?.height ?? 1024;
+        const latitudeCosine = Math.max(Math.abs(Math.cos((baseLat * Math.PI) / 180)), 1e-6);
+        const lngDegreesPerMeter = 1 / (111_320 * latitudeCosine);
+        const latDegreesPerMeter = 1 / 110_540;
 
         if (results.hotspots && results.hotspots.length > 0) {
             const features = results.hotspots.map((patch) => {
@@ -85,12 +93,17 @@ export default function HotspotsPage() {
                 // Patches are returned in source image coordinates (e.g., 224x224 patch within 1024x1024).
                 // Example bounding box: [x, y, width, height]
                 const [x, y, w, h] = patch.bbox;
-                const normalize = 1024; // Approximation for scale mapping
-                
-                // Offset latitude and longitude proportionally.
-                // 0.003 degrees corresponds to roughly 300 meters, typical bounds for high-res images
-                const lngOffset = ((x + w/2) / normalize - 0.5) * 0.003;
-                const latOffset = (0.5 - (y + h/2) / normalize) * 0.003;
+                const centerX = x + w / 2;
+                const centerY = y + h / 2;
+                const normalizedX = centerX / sourceWidth - 0.5;
+                const normalizedY = 0.5 - centerY / sourceHeight;
+
+                // Map image-space offsets into a bounded local scene around the assessment centroid.
+                // This keeps hotspot geometry deterministic even when source image size changes.
+                const offsetLngMeters = normalizedX * ASSUMED_SCENE_WIDTH_METERS;
+                const offsetLatMeters = normalizedY * ASSUMED_SCENE_HEIGHT_METERS;
+                const lngOffset = offsetLngMeters * lngDegreesPerMeter;
+                const latOffset = offsetLatMeters * latDegreesPerMeter;
 
                 return {
                     type: "Feature" as const,

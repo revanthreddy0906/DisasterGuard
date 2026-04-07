@@ -11,6 +11,10 @@ export interface PredictionResult {
         damage_class: string;
         confidence: number;
     }>;
+    source_dimensions?: {
+        width: number;
+        height: number;
+    };
 }
 
 type ApiErrorDetail = {

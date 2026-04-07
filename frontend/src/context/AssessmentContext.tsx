@@ -18,6 +18,10 @@ export interface Assessment {
             damage_class: string;
             confidence: number;
         }>;
+        source_dimensions?: {
+            width: number;
+            height: number;
+        };
     };
     location?: {
         name: string;
@@ -38,12 +42,29 @@ interface AssessmentContextType {
 }
 
 const AssessmentContext = createContext<AssessmentContextType | undefined>(undefined);
+const STORAGE_KEY = 'disasterguard.assessments.v1';
+
+type PersistedAssessmentState = {
+    assessments: Assessment[];
+    currentAssessmentId: string | null;
+    isDemoMode: boolean;
+};
+
+function sanitizeImagePair(imagePair?: { pre: string; post: string }) {
+    if (!imagePair) return undefined;
+
+    const pre = imagePair.pre.startsWith('blob:') ? '' : imagePair.pre;
+    const post = imagePair.post.startsWith('blob:') ? '' : imagePair.post;
+    if (!pre || !post) return undefined;
+    return { pre, post };
+}
 
 export function AssessmentProvider({ children }: { children: React.ReactNode }) {
     const [assessments, setAssessments] = useState<Assessment[]>([]);
     const [currentAssessment, setCurrentAssessment] = useState<Assessment | null>(null);
     const [isBackendOnline, setIsBackendOnline] = useState(false);
     const [isDemoMode, setIsDemoMode] = useState(false);
+    const [isStorageHydrated, setIsStorageHydrated] = useState(false);
 
     useEffect(() => {
         checkBackendHealth().then(setIsBackendOnline);
@@ -52,6 +73,47 @@ export function AssessmentProvider({ children }: { children: React.ReactNode }) 
         }, 30000);
         return () => clearInterval(interval);
     }, []);
+
+    useEffect(() => {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) {
+            setIsStorageHydrated(true);
+            return;
+        }
+
+        try {
+            const parsed = JSON.parse(raw) as PersistedAssessmentState;
+            if (!Array.isArray(parsed.assessments)) {
+                throw new Error('Invalid persisted assessments payload.');
+            }
+
+            setAssessments(parsed.assessments);
+            setIsDemoMode(Boolean(parsed.isDemoMode));
+            if (parsed.currentAssessmentId) {
+                const restoredCurrent = parsed.assessments.find(a => a.id === parsed.currentAssessmentId) || null;
+                setCurrentAssessment(restoredCurrent);
+            }
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            console.error(`Failed to restore persisted assessment state: ${message}`);
+            localStorage.removeItem(STORAGE_KEY);
+        } finally {
+            setIsStorageHydrated(true);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!isStorageHydrated) return;
+        const payload: PersistedAssessmentState = {
+            assessments: assessments.map(a => ({
+                ...a,
+                imagePair: sanitizeImagePair(a.imagePair),
+            })),
+            currentAssessmentId: currentAssessment?.id ?? null,
+            isDemoMode,
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    }, [assessments, currentAssessment, isDemoMode, isStorageHydrated]);
 
     const addAssessment = (assessment: Assessment) => {
         setAssessments(prev => [assessment, ...prev]);

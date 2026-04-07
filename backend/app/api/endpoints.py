@@ -125,7 +125,11 @@ async def predict_damage(pre_image: UploadFile = File(...), post_image: UploadFi
         "damage_class": result["damage_class"],
         "confidence": result["confidence"],
         "probabilities": result["probabilities"],
-        "hotspots": damage_hotspots
+        "hotspots": damage_hotspots,
+        "source_dimensions": {
+            "width": img_pre.width,
+            "height": img_pre.height,
+        },
     }
 
 
