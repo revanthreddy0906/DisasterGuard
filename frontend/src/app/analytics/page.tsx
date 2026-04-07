@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, Share2, BarChart2, PieChart as PieIcon, TrendingUp, Satellite } from "lucide-react";
+import { Download, Share2, BarChart2, PieChart as PieIcon, TrendingUp } from "lucide-react";
 import { ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, LineChart, Line } from "recharts";
 import { useAssessment } from "@/context/AssessmentContext";
 import Link from "next/link";
@@ -20,7 +20,11 @@ export default function AnalyticsPage() {
     const { assessments } = useAssessment();
 
     const damageCounts = { destroyed: 0, severe: 0, noDamage: 0 };
-    const regionImpactData: any[] = [];
+    const regionImpactData: Array<{
+        name: string;
+        confidence: number;
+        critical: number;
+    }> = [];
 
     assessments.forEach(a => {
         if (a.results) {

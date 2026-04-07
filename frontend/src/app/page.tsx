@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ArrowRight, BarChart3, Upload, Layers, AlertTriangle, Calendar, MapPin, Satellite } from "lucide-react";
+import { ArrowRight, BarChart3, Upload, Layers, AlertTriangle, MapPin, Satellite } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
 import { useAssessment } from "@/context/AssessmentContext";
 import { Badge } from "@/components/ui/badge";

@@ -5,6 +5,8 @@ import Map, { Marker, Popup } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapPin, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { useState } from 'react';
+import type { StyleSpecification } from 'maplibre-gl';
+import type { PredictionResult } from '@/lib/api';
 
 const MAP_STYLE = {
     version: 8,
@@ -42,7 +44,7 @@ interface MapComponentProps {
         latitude: number;
         zoom: number;
     };
-    geoJsonData?: any;
+    geoJsonData?: PredictionResult;
 }
 
 export function MapComponent({ initialViewState, geoJsonData }: MapComponentProps) {
@@ -72,7 +74,7 @@ export function MapComponent({ initialViewState, geoJsonData }: MapComponentProp
                 doubleClickZoom={true}
                 boxZoom={true}
                 style={{ width: '100%', height: '100%' }}
-                mapStyle={MAP_STYLE as any}
+                mapStyle={MAP_STYLE as StyleSpecification}
             >
                 {/* Location marker */}
                 {initialViewState && (

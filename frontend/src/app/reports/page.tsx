@@ -3,7 +3,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileText, Download, Calendar, MapPin, Search, AlertTriangle, Eye } from "lucide-react";
-import { useAssessment } from "@/context/AssessmentContext";
+import { useAssessment, type Assessment } from "@/context/AssessmentContext";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -12,7 +12,7 @@ export default function ReportsPage() {
     const { assessments, setCurrentAssessment } = useAssessment();
     const router = useRouter();
 
-    const handleViewAnalysis = (assessment: any) => {
+    const handleViewAnalysis = (assessment: Assessment) => {
         setCurrentAssessment(assessment);
         router.push('/analysis');
     };

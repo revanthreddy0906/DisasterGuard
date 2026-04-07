@@ -3,7 +3,7 @@
 import { MapComponent } from "@/components/map/MapComponent";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, MapPin, Calendar, AlertTriangle, Ruler, Navigation, ImageIcon, Satellite } from "lucide-react";
+import { Download, MapPin, Calendar, AlertTriangle, Navigation, ImageIcon, Satellite } from "lucide-react";
 import { useAssessment } from "@/context/AssessmentContext";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";

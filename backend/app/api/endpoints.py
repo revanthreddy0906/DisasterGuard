@@ -1,63 +1,132 @@
 import base64
 import io
-from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, HTTPException
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 from app.services.model_loader import get_model_loader
 from app.services.patch_analyzer import PatchAnalyzer
 from app.schemas.prediction import PredictionResponse
 from app.core.config import settings
 
 router = APIRouter()
+MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+
+
+def _ensure_valid_upload(upload: UploadFile, content: bytes, field_name: str) -> None:
+    if upload.content_type and not upload.content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=415,
+            detail={
+                "code": "unsupported_media_type",
+                "message": f"{field_name} must be an image upload.",
+            },
+        )
+
+    if not content:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "empty_upload",
+                "message": f"{field_name} is empty.",
+            },
+        )
+
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail={
+                "code": "payload_too_large",
+                "message": f"{field_name} exceeds the 25MB upload limit.",
+            },
+        )
+
+
+def _decode_rgb_image(content: bytes, field_name: str) -> Image.Image:
+    try:
+        return Image.open(io.BytesIO(content)).convert("RGB")
+    except (UnidentifiedImageError, OSError) as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "invalid_image",
+                "message": f"{field_name} is not a valid readable image.",
+            },
+        ) from exc
+
+
+def _get_model_loader():
+    try:
+        return get_model_loader()
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "model_checkpoint_missing",
+                "message": "Model checkpoint is unavailable on the server.",
+            },
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "model_unavailable",
+                "message": "Model could not be loaded for inference.",
+            },
+        ) from exc
 
 
 @router.post('/predict', response_model=PredictionResponse)
 async def predict_damage(pre_image: UploadFile = File(...), post_image: UploadFile = File(...)):
-    try:
-        model_loader = get_model_loader()
-        pre_content = await pre_image.read()
-        post_content = await post_image.read()
+    pre_content = await pre_image.read()
+    post_content = await post_image.read()
+    _ensure_valid_upload(pre_image, pre_content, "pre_image")
+    _ensure_valid_upload(post_image, post_content, "post_image")
 
-        # Decode images
-        img_pre = Image.open(io.BytesIO(pre_content)).convert("RGB")
-        img_post = Image.open(io.BytesIO(post_content)).convert("RGB")
+    img_pre = _decode_rgb_image(pre_content, "pre_image")
+    img_post = _decode_rgb_image(post_content, "post_image")
 
-        # Run sliding-window patch analysis
-        analyzer = PatchAnalyzer(model_loader)
-        analysis = analyzer.analyze(img_pre, img_post, step=112)
+    if img_pre.size != img_post.size:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "image_size_mismatch",
+                "message": f"pre_image size {img_pre.size} does not match post_image size {img_post.size}.",
+            },
+        )
 
-        hotspots = analysis["hotspots"]
-        global_result = analysis["global_result"]
+    model_loader = _get_model_loader()
 
-        # If patch analysis returned a global result, use the averaged prediction
-        # (more realistic confidence since it averages across all patches)
-        if global_result:
-            result = global_result
-        else:
-            # Fallback to single-pass prediction
-            result = model_loader.predict(pre_content, post_content)
+    # Run sliding-window patch analysis
+    analyzer = PatchAnalyzer(model_loader)
+    analysis = analyzer.analyze(img_pre, img_post, step=112)
 
-        # Filter hotspots: only return patches with actual damage
-        damage_hotspots = [
-            {
-                "bbox": h["bbox"],
-                "damage_class": h["damage_class"],
-                "confidence": h["confidence"]
-            }
-            for h in hotspots
-            if h["damage_class"] != "no-damage"
-        ]
+    hotspots = analysis["hotspots"]
+    global_result = analysis["global_result"]
 
-        return {
-            "damage_class": result["damage_class"],
-            "confidence": result["confidence"],
-            "probabilities": result["probabilities"],
-            "hotspots": damage_hotspots
+    # If patch analysis returned a global result, use the averaged prediction
+    # (more realistic confidence since it averages across all patches)
+    if global_result:
+        result = global_result
+    else:
+        # Fallback to single-pass prediction
+        result = model_loader.predict(pre_content, post_content)
+
+    # Filter hotspots: only return patches with actual damage
+    damage_hotspots = [
+        {
+            "bbox": h["bbox"],
+            "damage_class": h["damage_class"],
+            "confidence": h["confidence"]
         }
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        for h in hotspots
+        if h["damage_class"] != "no-damage"
+    ]
+
+    return {
+        "damage_class": result["damage_class"],
+        "confidence": result["confidence"],
+        "probabilities": result["probabilities"],
+        "hotspots": damage_hotspots
+    }
 
 
 @router.get('/sample-images')

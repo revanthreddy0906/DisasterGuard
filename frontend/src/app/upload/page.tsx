@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { Dropzone } from "@/components/upload/Dropzone";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, X, ArrowRight, Loader2, AlertCircle, Beaker } from "lucide-react";
-import { formatBytes, cn } from "@/lib/utils";
+import { X, ArrowRight, Loader2, AlertCircle, Beaker } from "lucide-react";
+import { formatBytes } from "@/lib/utils";
 import { useAssessment } from "@/context/AssessmentContext";
 import { predictDamage } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
@@ -58,7 +58,7 @@ export default function UploadPage() {
 
             processFiles([preFile, postFile]);
             setProgress("");
-        } catch (err: any) {
+        } catch {
             setError("Could not load sample data. Make sure the backend is running.");
             setProgress("");
         }
@@ -145,8 +145,9 @@ export default function UploadPage() {
             setIsProcessing(false);
             setProgress("");
             router.push('/analysis');
-        } catch (err: any) {
-            setError(`Analysis failed: ${err.message}`);
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Unknown error";
+            setError(`Analysis failed: ${message}`);
             setIsProcessing(false);
             setProgress("");
         }

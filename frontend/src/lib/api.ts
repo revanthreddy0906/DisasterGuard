@@ -13,6 +13,11 @@ export interface PredictionResult {
     }>;
 }
 
+type ApiErrorDetail = {
+    code?: string;
+    message?: string;
+};
+
 const API_BASE = "/api/v1";
 
 /**
@@ -44,8 +49,25 @@ export async function predictDamage(
     });
 
     if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(`Prediction failed (${res.status}): ${errorText}`);
+        const rawBody = await res.text();
+        let errorMessage = `Prediction failed (${res.status})`;
+
+        if (rawBody) {
+            try {
+                const parsed = JSON.parse(rawBody) as { detail?: string | ApiErrorDetail };
+                if (typeof parsed.detail === "string") {
+                    errorMessage = parsed.detail;
+                } else if (parsed.detail?.message) {
+                    errorMessage = parsed.detail.message;
+                } else {
+                    errorMessage = rawBody;
+                }
+            } catch {
+                errorMessage = rawBody;
+            }
+        }
+
+        throw new Error(`Prediction failed (${res.status}): ${errorMessage}`);
     }
 
     return res.json();

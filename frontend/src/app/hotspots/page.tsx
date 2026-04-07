@@ -9,6 +9,7 @@ import { useAssessment } from "@/context/AssessmentContext";
 import { Navigation, Thermometer, AlertTriangle, Layers, Satellite } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import type { HeatmapLayerSpecification, StyleSpecification } from "maplibre-gl";
 
 const MAP_STYLE = {
     version: 8,
@@ -38,7 +39,7 @@ const MAP_STYLE = {
     ]
 };
 
-const heatmapLayer: any = {
+const heatmapLayer: Omit<HeatmapLayerSpecification, "source"> = {
     id: 'heatmap',
     type: 'heatmap',
     paint: {
@@ -70,12 +71,12 @@ export default function HotspotsPage() {
     const heatmapData = useMemo(() => {
         if (!selectedAssessment?.results || !selectedAssessment?.location) return null;
 
-        const results = selectedAssessment.results as any;
+        const results = selectedAssessment.results;
         const baseLng = selectedAssessment.location.lng;
         const baseLat = selectedAssessment.location.lat;
 
         if (results.hotspots && results.hotspots.length > 0) {
-            const features = results.hotspots.map((patch: any) => {
+            const features = results.hotspots.map((patch) => {
                 let mag = 0;
                 if (patch.damage_class === 'destroyed') mag = 3;
                 else if (patch.damage_class === 'severe-damage') mag = 2;
@@ -230,7 +231,7 @@ export default function HotspotsPage() {
                                 zoom: 14
                             }}
                             style={{ width: '100%', height: '100%' }}
-                            mapStyle={MAP_STYLE as any}
+                            mapStyle={MAP_STYLE as StyleSpecification}
                         >
                             <Source type="geojson" data={heatmapData}>
                                 <Layer {...heatmapLayer} />
