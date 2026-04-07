@@ -17,17 +17,29 @@ interface FileWithPreview extends File {
     preview: string;
 }
 
-const MAX_UPLOAD_FILES = 2;
-const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+function parsePositiveInt(value: string | undefined, fallback: number): number {
+    if (!value) return fallback;
+    const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+const MAX_UPLOAD_FILES = parsePositiveInt(process.env.NEXT_PUBLIC_MAX_UPLOAD_FILES, 40);
+const MAX_FILE_SIZE_MB = parsePositiveInt(process.env.NEXT_PUBLIC_MAX_FILE_SIZE_MB, 25);
+const MAX_TOTAL_UPLOAD_MB = parsePositiveInt(process.env.NEXT_PUBLIC_MAX_TOTAL_UPLOAD_MB, 300);
+const MAX_ACTIVE_ANALYSES = parsePositiveInt(process.env.NEXT_PUBLIC_MAX_ACTIVE_ANALYSES, 2);
+const MAX_UPLOAD_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+const MAX_TOTAL_UPLOAD_BYTES = MAX_TOTAL_UPLOAD_MB * 1024 * 1024;
 
 export default function UploadPage() {
     const router = useRouter();
-    const { addAssessment, updateAssessment, isBackendOnline } = useAssessment();
+    const { assessments, addAssessment, updateAssessment, isBackendOnline } = useAssessment();
     const [unpaired, setUnpaired] = useState<FileWithPreview[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [progress, setProgress] = useState("");
     const filesRef = useRef<FileWithPreview[]>([]);
+    const activeProcessingCount = assessments.filter(a => a.status === "processing").length;
+    const analysisCapacityReached = activeProcessingCount >= MAX_ACTIVE_ANALYSES;
 
     const processFiles = useCallback((files: File[]) => {
         const newFiles = files.map(file => Object.assign(file, {
@@ -40,10 +52,6 @@ export default function UploadPage() {
             prev.forEach(file => URL.revokeObjectURL(file.preview));
             return limited;
         });
-        if (files.length > MAX_UPLOAD_FILES) {
-            setError(`Only ${MAX_UPLOAD_FILES} files are allowed. Keeping the first ${MAX_UPLOAD_FILES}.`);
-            return;
-        }
         setError(null);
     }, []);
 
@@ -78,7 +86,28 @@ export default function UploadPage() {
         if (acceptedFiles.length === 0) {
             return;
         }
-        processFiles(acceptedFiles);
+
+        const withinBudget: File[] = [];
+        let totalBytes = 0;
+        for (const file of acceptedFiles) {
+            if (withinBudget.length >= MAX_UPLOAD_FILES) break;
+            if (totalBytes + file.size > MAX_TOTAL_UPLOAD_BYTES) break;
+            withinBudget.push(file);
+            totalBytes += file.size;
+        }
+
+        if (withinBudget.length === 0) {
+            setError(`Upload batch exceeds total budget of ${formatBytes(MAX_TOTAL_UPLOAD_BYTES)}.`);
+            return;
+        }
+
+        processFiles(withinBudget);
+
+        if (withinBudget.length < acceptedFiles.length) {
+            setError(
+                `Kept ${withinBudget.length} file(s) within limits (${MAX_UPLOAD_FILES} max files, ${formatBytes(MAX_TOTAL_UPLOAD_BYTES)} total).`
+            );
+        }
     };
 
     const removeFile = (name: string) => {
@@ -119,6 +148,10 @@ export default function UploadPage() {
     const handleAnalysis = async () => {
         if (!isBackendOnline) {
             setError("Backend is offline. Please start the backend server first.");
+            return;
+        }
+        if (analysisCapacityReached) {
+            setError(`Backend is already handling ${MAX_ACTIVE_ANALYSES} active analyses. Wait for one to finish.`);
             return;
         }
 
@@ -216,6 +249,9 @@ export default function UploadPage() {
                     <Badge variant={isBackendOnline ? "success" : "destructive"} className="text-[10px]">
                         {isBackendOnline ? "● ML Ready" : "● Backend Offline"}
                     </Badge>
+                    <Badge variant={analysisCapacityReached ? "warning" : "secondary"} className="text-[10px]">
+                        Active Jobs: {activeProcessingCount}/{MAX_ACTIVE_ANALYSES}
+                    </Badge>
                 </div>
             </div>
 
@@ -263,7 +299,9 @@ export default function UploadPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle className="text-lg">Uploaded Files ({unpaired.length})</CardTitle>
-                        <CardDescription>Files ready for analysis. Need at least 2 files (pre and post event).</CardDescription>
+                        <CardDescription>
+                            Need at least 2 files (pre/post). Limits: {MAX_UPLOAD_FILES} files, {MAX_FILE_SIZE_MB}MB per file, {MAX_TOTAL_UPLOAD_MB}MB total.
+                        </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-2">
@@ -317,7 +355,7 @@ export default function UploadPage() {
 
                         <div className="mt-6 flex justify-end">
                             <Button
-                                disabled={unpaired.length < 2 || isProcessing || !isBackendOnline}
+                                disabled={unpaired.length < 2 || isProcessing || !isBackendOnline || analysisCapacityReached}
                                 size="lg"
                                 onClick={handleAnalysis}
                             >

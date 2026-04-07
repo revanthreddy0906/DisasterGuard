@@ -53,6 +53,12 @@ If you want persistence again, start frontend with:
 NEXT_PUBLIC_PERSIST_ASSESSMENTS=true npm run dev
 ```
 
+Upload protection defaults (frontend):
+- `NEXT_PUBLIC_MAX_UPLOAD_FILES=40`
+- `NEXT_PUBLIC_MAX_FILE_SIZE_MB=25`
+- `NEXT_PUBLIC_MAX_TOTAL_UPLOAD_MB=300`
+- `NEXT_PUBLIC_MAX_ACTIVE_ANALYSES=2`
+
 ## Easy deployment alternatives (Mac-friendly)
 
 If your Mac hangs with full dev mode (`--reload`, hot reload, extra workers), use these lightweight profiles:

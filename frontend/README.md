@@ -23,6 +23,12 @@ To opt in to persistence:
 NEXT_PUBLIC_PERSIST_ASSESSMENTS=true npm run dev
 ```
 
+Upload/load guard defaults:
+- `NEXT_PUBLIC_MAX_UPLOAD_FILES=40`
+- `NEXT_PUBLIC_MAX_FILE_SIZE_MB=25`
+- `NEXT_PUBLIC_MAX_TOTAL_UPLOAD_MB=300`
+- `NEXT_PUBLIC_MAX_ACTIVE_ANALYSES=2`
+
 ## Backend integration
 
 `next.config.ts` rewrites API calls to backend:
