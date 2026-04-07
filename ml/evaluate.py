@@ -1,10 +1,11 @@
 import argparse
+import json
 from pathlib import Path
 
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
-from sklearn.metrics import classification_report, f1_score, accuracy_score
+from sklearn.metrics import classification_report, f1_score, accuracy_score, confusion_matrix
 from tqdm import tqdm
 
 from ml import config
@@ -68,7 +69,54 @@ def evaluate(checkpoint_path, data_dir, batch_size=None):
     print(f"  F1 (macro):    {f1_m:.4f}")
     print(f"{'=' * 50}")
 
-    print(f"\n{classification_report(all_targets, all_preds, target_names=config.DAMAGE_CLASSES, zero_division=0)}")
+    report_text = classification_report(
+        all_targets,
+        all_preds,
+        target_names=config.DAMAGE_CLASSES,
+        zero_division=0,
+    )
+    print(f"\n{report_text}")
+
+    cm = confusion_matrix(all_targets, all_preds, labels=list(range(config.NUM_CLASSES))).tolist()
+    artifacts_dir = Path(config.CHECKPOINT_DIR)
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    metrics_payload = {
+        "checkpoint": str(checkpoint_path),
+        "data_dir": str(data_dir),
+        "test_samples": int(len(test_ds)),
+        "accuracy": float(acc),
+        "f1_weighted": float(f1_w),
+        "f1_macro": float(f1_m),
+        "classes": config.DAMAGE_CLASSES,
+        "confusion_matrix": cm,
+    }
+    (artifacts_dir / "evaluation_metrics.json").write_text(
+        json.dumps(metrics_payload, indent=2),
+        encoding="utf-8",
+    )
+
+    report_lines = [
+        "Disaster Damage Assessment — Evaluation Report",
+        "=" * 50,
+        "",
+        f"Checkpoint: {checkpoint_path}",
+        f"Data dir:   {data_dir}",
+        f"Test samples: {len(test_ds)}",
+        "",
+        f"Accuracy:      {acc:.4f}",
+        f"F1 (macro):    {f1_m:.4f}",
+        f"F1 (weighted): {f1_w:.4f}",
+        "",
+        "Confusion Matrix:",
+        str(cm),
+        "",
+        "Classification Report:",
+        report_text,
+    ]
+    (artifacts_dir / "evaluation_report.txt").write_text(
+        "\n".join(report_lines),
+        encoding="utf-8",
+    )
 
 
 # =========================

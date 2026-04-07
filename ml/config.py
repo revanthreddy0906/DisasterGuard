@@ -69,6 +69,7 @@ DROPOUT_RATE = 0.3
 # TRAINING SETTINGS
 # =========================
 
+SEED = 42
 BATCH_SIZE = 32
 NUM_WORKERS = min(4, os.cpu_count() or 1)
 LEARNING_RATE = 1e-4
