@@ -46,6 +46,62 @@ npm run dev
 
 Frontend uses Next.js rewrites to proxy API calls to `http://localhost:8000`.
 
+## Easy deployment alternatives (Mac-friendly)
+
+If your Mac hangs with full dev mode (`--reload`, hot reload, extra workers), use these lightweight profiles:
+
+### Lightweight backend (single worker, no reload)
+
+```bash
+bash scripts/run_backend_light.sh
+```
+
+Optional tuning:
+
+```bash
+BACKEND_PORT=8000 BACKEND_WORKERS=1 BACKEND_THREADS=1 bash scripts/run_backend_light.sh
+```
+
+### Lightweight frontend
+
+Production mode is much lighter than `npm run dev` for day-to-day local usage:
+
+```bash
+bash scripts/run_frontend_light.sh
+```
+
+Use `FRONTEND_PROFILE=dev` only when you need live editing:
+
+```bash
+FRONTEND_PROFILE=dev bash scripts/run_frontend_light.sh
+```
+
+### One-command lightweight stack (start/stop)
+
+```bash
+bash scripts/start_lightweight_stack.sh
+bash scripts/stop_lightweight_stack.sh
+```
+
+This starts backend + frontend in the background and writes logs to `runs/lightweight/logs/`.
+
+### Offload heavy inference (recommended on constrained Macs)
+
+Keep the frontend local, but point it to a stronger remote backend (VM/GPU box):
+
+```bash
+BACKEND_ORIGIN=https://your-remote-backend.example.com bash scripts/run_frontend_light.sh
+```
+
+or with the stack helper (frontend local + remote backend, no local model process):
+
+```bash
+START_LOCAL_BACKEND=0 BACKEND_ORIGIN=https://your-remote-backend.example.com bash scripts/start_lightweight_stack.sh
+```
+
+`frontend/next.config.ts` now reads `BACKEND_ORIGIN`, so `/api/*` requests are proxied to that remote backend while your UI stays local.
+
+
 ## Quality checks
 
 ### Frontend
