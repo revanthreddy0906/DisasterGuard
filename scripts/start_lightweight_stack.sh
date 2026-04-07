@@ -9,6 +9,11 @@ FRONTEND_PID_FILE="$RUN_DIR/frontend.pid"
 BACKEND_LOG="$LOG_DIR/backend.log"
 FRONTEND_LOG="$LOG_DIR/frontend.log"
 
+port_in_use() {
+  local port="$1"
+  lsof -ti tcp:"$port" -sTCP:LISTEN >/dev/null 2>&1
+}
+
 cleanup_stale_pid() {
   local pid_file="$1"
   if [ -f "$pid_file" ]; then
@@ -40,6 +45,18 @@ START_LOCAL_BACKEND="${START_LOCAL_BACKEND:-1}"
 BACKEND_PORT="${BACKEND_PORT:-8000}"
 FRONTEND_PORT="${FRONTEND_PORT:-3000}"
 BACKEND_ORIGIN="${BACKEND_ORIGIN:-http://127.0.0.1:$BACKEND_PORT}"
+
+if [ "$START_LOCAL_BACKEND" = "1" ] && port_in_use "$BACKEND_PORT"; then
+  echo "backend port :$BACKEND_PORT is already in use"
+  echo "run: bash scripts/stop_lightweight_stack.sh"
+  exit 1
+fi
+
+if port_in_use "$FRONTEND_PORT"; then
+  echo "frontend port :$FRONTEND_PORT is already in use"
+  echo "run: bash scripts/stop_lightweight_stack.sh"
+  exit 1
+fi
 
 if [ "$START_LOCAL_BACKEND" = "1" ]; then
   (
