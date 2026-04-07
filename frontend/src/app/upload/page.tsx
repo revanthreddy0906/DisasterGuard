@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import type { FileRejection } from "react-dropzone";
 import { Dropzone } from "@/components/upload/Dropzone";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,9 @@ interface FileWithPreview extends File {
     preview: string;
 }
 
+const MAX_UPLOAD_FILES = 2;
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+
 export default function UploadPage() {
     const router = useRouter();
     const { addAssessment, updateAssessment, isBackendOnline } = useAssessment();
@@ -23,21 +27,68 @@ export default function UploadPage() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [progress, setProgress] = useState("");
+    const filesRef = useRef<FileWithPreview[]>([]);
 
     const processFiles = useCallback((files: File[]) => {
         const newFiles = files.map(file => Object.assign(file, {
             preview: URL.createObjectURL(file)
         })) as FileWithPreview[];
-        setUnpaired(prev => [...prev, ...newFiles]);
+        const limited = newFiles.slice(0, MAX_UPLOAD_FILES);
+        const dropped = newFiles.filter(file => !limited.includes(file));
+        dropped.forEach(file => URL.revokeObjectURL(file.preview));
+        setUnpaired(prev => {
+            prev.forEach(file => URL.revokeObjectURL(file.preview));
+            return limited;
+        });
+        if (files.length > MAX_UPLOAD_FILES) {
+            setError(`Only ${MAX_UPLOAD_FILES} files are allowed. Keeping the first ${MAX_UPLOAD_FILES}.`);
+            return;
+        }
         setError(null);
     }, []);
 
-    const handleDrop = (acceptedFiles: File[]) => {
+    useEffect(() => {
+        filesRef.current = unpaired;
+    }, [unpaired]);
+
+    useEffect(() => {
+        return () => {
+            filesRef.current.forEach(file => URL.revokeObjectURL(file.preview));
+        };
+    }, []);
+
+    const handleDrop = (acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
+        if (rejectedFiles.length > 0) {
+            const errors = rejectedFiles.flatMap(file =>
+                file.errors.map(err => {
+                    if (err.code === "file-too-large") {
+                        return `${file.file.name} exceeds ${formatBytes(MAX_UPLOAD_BYTES)}.`;
+                    }
+                    if (err.code === "too-many-files") {
+                        return `Only ${MAX_UPLOAD_FILES} files can be selected.`;
+                    }
+                    if (err.code === "file-invalid-type") {
+                        return `${file.file.name} has an unsupported file type.`;
+                    }
+                    return `${file.file.name}: ${err.message}`;
+                })
+            );
+            setError(errors[0] ?? "One or more files were rejected.");
+        }
+        if (acceptedFiles.length === 0) {
+            return;
+        }
         processFiles(acceptedFiles);
     };
 
     const removeFile = (name: string) => {
-        setUnpaired(prev => prev.filter(f => f.name !== name));
+        setUnpaired(prev => {
+            const fileToRemove = prev.find(f => f.name === name);
+            if (fileToRemove) {
+                URL.revokeObjectURL(fileToRemove.preview);
+            }
+            return prev.filter(f => f.name !== name);
+        });
     };
 
     const handleTrySample = async () => {
@@ -188,6 +239,8 @@ export default function UploadPage() {
                             'image/png': ['.png'],
                             'image/tiff': ['.tif', '.tiff']
                         }}
+                        maxSize={MAX_UPLOAD_BYTES}
+                        maxFiles={MAX_UPLOAD_FILES}
                     />
                     {/* Try with sample data button */}
                     <div className="mt-4 flex justify-center">

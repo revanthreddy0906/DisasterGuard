@@ -16,6 +16,13 @@ npm run dev
 
 Open `http://localhost:3000`.
 
+Assessment data is session-only by default (no persistence).  
+To opt in to persistence:
+
+```bash
+NEXT_PUBLIC_PERSIST_ASSESSMENTS=true npm run dev
+```
+
 ## Backend integration
 
 `next.config.ts` rewrites API calls to backend:

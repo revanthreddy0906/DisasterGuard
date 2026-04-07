@@ -11,11 +11,12 @@ interface DropzoneProps {
     maxFiles?: number;
 }
 
-export function Dropzone({ onDrop, accept, maxSize = 10 * 1024 * 1024 }: DropzoneProps) {
+export function Dropzone({ onDrop, accept, maxSize = 10 * 1024 * 1024, maxFiles }: DropzoneProps) {
     const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
         onDrop,
         accept,
         maxSize,
+        maxFiles,
     });
 
     return (
@@ -48,6 +49,7 @@ export function Dropzone({ onDrop, accept, maxSize = 10 * 1024 * 1024 }: Dropzon
             </div>
             <div className="flex gap-4 text-xs text-slate-500 font-medium">
                 <span>Max size: {formatBytes(maxSize)}</span>
+                {maxFiles ? <span>Max files: {maxFiles}</span> : null}
                 <span>Formats: JPG, PNG, TIFF</span>
             </div>
         </div>

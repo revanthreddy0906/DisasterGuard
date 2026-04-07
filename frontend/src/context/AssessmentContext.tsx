@@ -43,6 +43,7 @@ interface AssessmentContextType {
 
 const AssessmentContext = createContext<AssessmentContextType | undefined>(undefined);
 const STORAGE_KEY = 'disasterguard.assessments.v1';
+const PERSIST_ASSESSMENTS = process.env.NEXT_PUBLIC_PERSIST_ASSESSMENTS === 'true';
 
 type PersistedAssessmentState = {
     assessments: Assessment[];
@@ -75,6 +76,12 @@ export function AssessmentProvider({ children }: { children: React.ReactNode }) 
     }, []);
 
     useEffect(() => {
+        if (!PERSIST_ASSESSMENTS) {
+            localStorage.removeItem(STORAGE_KEY);
+            setIsStorageHydrated(true);
+            return;
+        }
+
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) {
             setIsStorageHydrated(true);
@@ -103,6 +110,7 @@ export function AssessmentProvider({ children }: { children: React.ReactNode }) 
     }, []);
 
     useEffect(() => {
+        if (!PERSIST_ASSESSMENTS) return;
         if (!isStorageHydrated) return;
         const payload: PersistedAssessmentState = {
             assessments: assessments.map(a => ({

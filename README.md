@@ -46,6 +46,13 @@ npm run dev
 
 Frontend uses Next.js rewrites to proxy API calls to `http://localhost:8000`.
 
+By default, dashboard assessments/reports are **ephemeral** (not persisted).  
+If you want persistence again, start frontend with:
+
+```bash
+NEXT_PUBLIC_PERSIST_ASSESSMENTS=true npm run dev
+```
+
 ## Easy deployment alternatives (Mac-friendly)
 
 If your Mac hangs with full dev mode (`--reload`, hot reload, extra workers), use these lightweight profiles:
