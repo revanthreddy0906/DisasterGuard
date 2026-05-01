@@ -54,9 +54,15 @@ type PersistedAssessmentState = {
 function sanitizeImagePair(imagePair?: { pre: string; post: string }) {
     if (!imagePair) return undefined;
 
+    // Strip blob: URLs (not serializable) but keep data: URLs (base64-encoded, persistent)
     const pre = imagePair.pre.startsWith('blob:') ? '' : imagePair.pre;
     const post = imagePair.post.startsWith('blob:') ? '' : imagePair.post;
     if (!pre || !post) return undefined;
+
+    // For localStorage, skip very large data: URLs to avoid quota issues (>2MB each)
+    const MAX_PERSIST_LEN = 2 * 1024 * 1024;
+    if (pre.length > MAX_PERSIST_LEN || post.length > MAX_PERSIST_LEN) return undefined;
+
     return { pre, post };
 }
 

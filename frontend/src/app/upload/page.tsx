@@ -200,6 +200,20 @@ export default function UploadPage() {
 
         const assessmentId = crypto.randomUUID();
 
+        // Convert files to data URLs so images survive page navigation
+        // (blob: URLs get revoked when the upload page unmounts)
+        const toDataURL = (file: File): Promise<string> =>
+            new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.readAsDataURL(file);
+            });
+
+        const [preDataUrl, postDataUrl] = await Promise.all([
+            toDataURL(preFile),
+            toDataURL(postFile),
+        ]);
+
         // Create the assessment entry immediately as "processing"
         const newAssessment = {
             id: assessmentId,
@@ -208,8 +222,8 @@ export default function UploadPage() {
             date: new Date().toISOString(),
             location: location,
             imagePair: {
-                pre: preFile.preview,
-                post: postFile.preview
+                pre: preDataUrl,
+                post: postDataUrl
             }
         };
 
