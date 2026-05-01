@@ -62,59 +62,56 @@ The ML model is trained on the [xBD dataset](https://xview2.org/) — the larges
 
 ## Architecture
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                        Frontend (Next.js 16)                     │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ ┌─────────┐ │
-│  │Dashboard │ │ Upload   │ │ Analysis │ │Hotspots│ │ Reports │ │
-│  └──────────┘ └──────────┘ └──────────┘ └────────┘ └─────────┘ │
-│                        API Proxy (rewrites)                      │
-└──────────────────────────┬───────────────────────────────────────┘
-                           │ /api/v1/*
-┌──────────────────────────▼───────────────────────────────────────┐
-│                     Backend (FastAPI + Uvicorn)                   │
-│  ┌─────────────┐  ┌────────────────┐  ┌────────────────────────┐│
-│  │ Endpoints   │  │InferenceGuard  │  │  Observability         ││
-│  │ /predict    │  │ concurrency    │  │  request metrics       ││
-│  │ /sample     │  │ timeout        │  │  structured logging    ││
-│  │ /health     │  │ backpressure   │  │  request tracing       ││
-│  └──────┬──────┘  └────────────────┘  └────────────────────────┘│
-│         │                                                        │
-│  ┌──────▼──────────────────────────────────────────────────────┐ │
-│  │              ML Inference Engine                             │ │
-│  │  ┌─────────────┐  ┌──────────────┐  ┌───────────────────┐  │ │
-│  │  │ModelLoader   │  │PatchAnalyzer │  │ SiameseDamageNet  │  │ │
-│  │  │(lazy load)   │  │(sliding win) │  │ (EfficientNet-B0) │  │ │
-│  │  └─────────────┘  └──────────────┘  └───────────────────┘  │ │
-│  └────────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────────┘
+### System Architecture
+
+```mermaid
+graph TB
+    subgraph Frontend["🖥️ Frontend (Next.js 16)"]
+        Dashboard[Dashboard]
+        Upload[Upload]
+        Analysis[Analysis]
+        Hotspots[Hotspots]
+        Reports[Reports]
+        Proxy["API Proxy (rewrites)"]
+    end
+
+    subgraph Backend["⚙️ Backend (FastAPI + Uvicorn)"]
+        Endpoints["/predict  /sample  /health"]
+        Guard["InferenceGuard\nconcurrency · timeout\nbackpressure"]
+        Observe["Observability\nrequest metrics\nstructured logging\nrequest tracing"]
+
+        subgraph Engine["🧠 ML Inference Engine"]
+            Loader["ModelLoader\n(lazy load)"]
+            Patch["PatchAnalyzer\n(sliding window)"]
+            Model["SiameseDamageNet\n(EfficientNet-B0)"]
+        end
+    end
+
+    Dashboard & Upload & Analysis & Hotspots & Reports --> Proxy
+    Proxy -->|"/api/v1/*"| Endpoints
+    Endpoints --> Guard
+    Guard --> Engine
+    Endpoints --> Observe
+    Loader --> Model
+    Patch --> Model
 ```
 
 ### ML Model Architecture
 
-```
-Pre-disaster image  ──►  ┌─────────────────────┐  ──► Pre-features (1280-d)
-                         │  Shared EfficientNet  │                           ┐
-Post-disaster image ──►  │  Encoder (B0)         │  ──► Post-features (1280-d)
-                         └─────────────────────┘                           │
-                                                                           ▼
-                                                              ┌──────────────────┐
-                                                              │  Feature Fusion   │
-                                                              │  concat + |diff|  │
-                                                              │  = 3840 features  │
-                                                              └────────┬─────────┘
-                                                                       ▼
-                                                              ┌──────────────────┐
-                                                              │   SE Attention    │
-                                                              │  (channel-wise)  │
-                                                              └────────┬─────────┘
-                                                                       ▼
-                                                              ┌──────────────────┐
-                                                              │  Classifier MLP   │
-                                                              │  3840→512→128→3   │
-                                                              └────────┬─────────┘
-                                                                       ▼
-                                                              [no-damage | severe | destroyed]
+```mermaid
+graph TB
+    PreImg["🛰️ Pre-disaster Image"] --> Encoder["Shared EfficientNet-B0\nEncoder"]
+    PostImg["🛰️ Post-disaster Image"] --> Encoder
+
+    Encoder -->|"1280-d"| PreFeat["Pre-features"]
+    Encoder -->|"1280-d"| PostFeat["Post-features"]
+
+    PreFeat --> Fusion["Feature Fusion\nconcat(pre, post) + |pre − post|\n= 3840 features"]
+    PostFeat --> Fusion
+
+    Fusion --> SE["Squeeze-and-Excitation\nAttention (channel-wise)"]
+    SE --> MLP["Classifier MLP\n3840 → 512 → 128 → 3"]
+    MLP --> Output["no-damage | severe-damage | destroyed"]
 ```
 
 **Key Design Decisions:**
