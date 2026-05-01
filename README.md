@@ -1,4 +1,4 @@
-<![CDATA[<div align="center">
+<div align="center">
 
 # 🛡️ DisasterGuard
 
@@ -495,4 +495,3 @@ bash scripts/cleanup_artifacts.sh --all-generated  # Deeper cleanup
 **Built with ❤️ for disaster response**
 
 </div>
-]]>
